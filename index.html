@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Budget Rat Pro</title>
+<style>
+body{background:#050505;color:white;font-family:Arial;text-align:center;padding:20px}
+.card{background:#151515;border-radius:20px;padding:20px;margin:auto;max-width:500px;box-shadow:0 0 20px #00ff88}
+input,select{padding:12px;margin:6px;border-radius:10px;border:0;width:85%}
+button{padding:12px;margin:8px;border:0;border-radius:12px;background:#00ff88;font-weight:bold}
+.depense{background:#222;margin:8px;padding:10px;border-radius:10px}
+.bar{height:22px;background:#00ff88;margin:8px;border-radius:10px}
+.red{color:red}.green{color:#00ff88}
+</style>
+</head>
+<body>
+
+<div class="card" id="login">
+<h1>Login gros rat 🐀</h1>
+<input id="mdp" placeholder="Mot de passe">
+<button onclick="login()">Entrer</button>
+<p>Mot de passe : rat</p>
+</div>
+
+<div class="card" id="app" style="display:none">
+<h1>Budget Rat Pro 💸</h1>
+
+<input id="revenu" type="number" placeholder="Ton revenu €" oninput="save()">
+
+<select id="cat">
+<option>Loyer</option>
+<option>Courses</option>
+<option>Transport</option>
+<option>Abonnements</option>
+<option>Autres</option>
+</select>
+
+<input id="montant" type="number" placeholder="Montant dépense €">
+<button onclick="ajouter()">Ajouter dépense</button>
+
+<h2 id="reste"></h2>
+<div id="liste"></div>
+
+<h2>Graphique</h2>
+<div id="graph"></div>
+
+<button onclick="reset()">Tout effacer</button>
+</div>
+
+<script>
+let depenses = JSON.parse(localStorage.getItem("depenses")) || [];
+
+function login(){
+  if(document.getElementById("mdp").value === "rat"){
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    charger();
+  } else {
+    alert("Mauvais mot de passe 😭");
+  }
+}
+
+function save(){
+  localStorage.setItem("revenu", document.getElementById("revenu").value);
+  localStorage.setItem("depenses", JSON.stringify(depenses));
+  afficher();
+}
+
+function charger(){
+  document.getElementById("revenu").value = localStorage.getItem("revenu") || "";
+  afficher();
+}
+
+function ajouter(){
+  let cat = document.getElementById("cat").value;
+  let montant = Number(document.getElementById("montant").value);
+
+  if(!montant){
+    alert("Mets un montant, gros rat 😭");
+    return;
+  }
+
+  depenses.push({cat:cat, montant:montant});
+  document.getElementById("montant").value = "";
+  save();
+}
+
+function afficher(){
+  let revenu = Number(document.getElementById("revenu").value);
+  let total = depenses.reduce((s,d)=>s+d.montant,0);
+  let reste = revenu - total;
+
+  document.getElementById("reste").textContent = "Il te reste : " + reste + " €";
+  document.getElementById("reste").className = reste < 0 ? "red" : "green";
+
+  document.getElementById("liste").innerHTML = depenses.map((d,i)=>
+    `<div class="depense">${d.cat} : ${d.montant} € 
+    <button onclick="supprimer(${i})">X</button></div>`
+  ).join("");
+
+  let cats = {};
+  depenses.forEach(d=>cats[d.cat]=(cats[d.cat]||0)+d.montant);
+
+  document.getElementById("graph").innerHTML = Object.keys(cats).map(c=>
+    `<p>${c} : ${cats[c]} €</p>
+    <div class="bar" style="width:${Math.min(cats[c],300)}px"></div>`
+  ).join("");
+}
+
+function supprimer(i){
+  depenses.splice(i,1);
+  save();
+}
+
+function reset(){
+  if(confirm("Tout supprimer ?")){
+    localStorage.clear();
+    depenses = [];
+    charger();
+  }
+}
+</script>
+
+</body>
+</html>
