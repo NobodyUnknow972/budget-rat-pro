@@ -1,25 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Budget Rat Pro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00ff88">
 <style>
-body{background:#050505;color:white;font-family:Arial;text-align:center;padding:20px}
-.card{background:#151515;border-radius:20px;padding:20px;margin:auto;max-width:500px;box-shadow:0 0 20px #00ff88}
-input,select{padding:12px;margin:6px;border-radius:10px;border:0;width:85%}
-button{padding:12px;margin:8px;border:0;border-radius:12px;background:#00ff88;font-weight:bold}
-.depense{background:#222;margin:8px;padding:10px;border-radius:10px}
-.bar{height:22px;background:#00ff88;margin:8px;border-radius:10px}
-.red{color:red}.green{color:#00ff88}
+body{margin:0;background:#050505;color:white;font-family:Arial;text-align:center}
+.card{background:#151515;margin:25px auto;padding:25px;border-radius:22px;max-width:520px;box-shadow:0 0 25px #00ff88}
+input,select,button{width:90%;padding:14px;margin:8px;border:0;border-radius:12px}
+button{background:#00ff88;font-weight:bold;cursor:pointer}
+.depense{background:#222;margin:10px;padding:12px;border-radius:12px}
+.red{color:#ff4d4d}.green{color:#00ff88}
+.bar{height:20px;background:#00ff88;border-radius:10px}
+.small{font-size:13px;color:#aaa}
 </style>
 </head>
 <body>
 
 <div class="card" id="login">
-<h1>Login gros rat 🐀</h1>
-<input id="mdp" placeholder="Mot de passe">
-<button onclick="login()">Entrer</button>
-<p>Mot de passe : rat</p>
+<h1>Budget Rat Pro 🐀</h1>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Mot de passe">
+<button onclick="loginLocal()">Entrer hors ligne</button>
+<p class="small">Mode local : tes données restent sur ce téléphone.</p>
 </div>
 
 <div class="card" id="app" style="display:none">
@@ -32,6 +37,7 @@ button{padding:12px;margin:8px;border:0;border-radius:12px;background:#00ff88;fo
 <option>Courses</option>
 <option>Transport</option>
 <option>Abonnements</option>
+<option>Sorties</option>
 <option>Autres</option>
 </select>
 
@@ -44,20 +50,20 @@ button{padding:12px;margin:8px;border:0;border-radius:12px;background:#00ff88;fo
 <h2>Graphique</h2>
 <div id="graph"></div>
 
+<button onclick="exportData()">Exporter mes données</button>
+<button onclick="importData()">Importer</button>
 <button onclick="reset()">Tout effacer</button>
+
+<p class="small">Astuce : ajoute ce site à ton écran d’accueil pour l’utiliser comme une app.</p>
 </div>
 
 <script>
 let depenses = JSON.parse(localStorage.getItem("depenses")) || [];
 
-function login(){
-  if(document.getElementById("mdp").value === "rat"){
-    document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    charger();
-  } else {
-    alert("Mauvais mot de passe 😭");
-  }
+function loginLocal(){
+  document.getElementById("login").style.display="none";
+  document.getElementById("app").style.display="block";
+  charger();
 }
 
 function save(){
@@ -75,18 +81,18 @@ function ajouter(){
   let cat = document.getElementById("cat").value;
   let montant = Number(document.getElementById("montant").value);
 
-  if(!montant){
-    alert("Mets un montant, gros rat 😭");
+  if(!montant || montant <= 0){
+    alert("Mets un vrai montant, gros rat 😭");
     return;
   }
 
-  depenses.push({cat:cat, montant:montant});
-  document.getElementById("montant").value = "";
+  depenses.push({cat, montant});
+  document.getElementById("montant").value="";
   save();
 }
 
 function afficher(){
-  let revenu = Number(document.getElementById("revenu").value);
+  let revenu = Number(document.getElementById("revenu").value) || 0;
   let total = depenses.reduce((s,d)=>s+d.montant,0);
   let reste = revenu - total;
 
@@ -94,17 +100,18 @@ function afficher(){
   document.getElementById("reste").className = reste < 0 ? "red" : "green";
 
   document.getElementById("liste").innerHTML = depenses.map((d,i)=>
-    `<div class="depense">${d.cat} : ${d.montant} € 
-    <button onclick="supprimer(${i})">X</button></div>`
+    `<div class="depense">${d.cat} : ${d.montant} €
+    <button style="width:auto" onclick="supprimer(${i})">X</button></div>`
   ).join("");
 
   let cats = {};
   depenses.forEach(d=>cats[d.cat]=(cats[d.cat]||0)+d.montant);
 
-  document.getElementById("graph").innerHTML = Object.keys(cats).map(c=>
-    `<p>${c} : ${cats[c]} €</p>
-    <div class="bar" style="width:${Math.min(cats[c],300)}px"></div>`
-  ).join("");
+  let max = Math.max(...Object.values(cats),1);
+  document.getElementById("graph").innerHTML = Object.keys(cats).map(c=>{
+    let width = (cats[c] / max) * 100;
+    return `<p>${c} : ${cats[c]} €</p><div class="bar" style="width:${width}%"></div>`;
+  }).join("");
 }
 
 function supprimer(i){
@@ -115,9 +122,40 @@ function supprimer(i){
 function reset(){
   if(confirm("Tout supprimer ?")){
     localStorage.clear();
-    depenses = [];
+    depenses=[];
     charger();
   }
+}
+
+function exportData(){
+  let data = {
+    revenu: localStorage.getItem("revenu") || "",
+    depenses
+  };
+  let blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "budget-rat-pro.json";
+  a.click();
+}
+
+function importData(){
+  let input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = e => {
+    let file = e.target.files[0];
+    let reader = new FileReader();
+    reader.onload = () => {
+      let data = JSON.parse(reader.result);
+      localStorage.setItem("revenu", data.revenu || "");
+      depenses = data.depenses || [];
+      save();
+      charger();
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 </script>
 

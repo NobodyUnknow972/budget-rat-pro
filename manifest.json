@@ -1,0 +1,9 @@
+{
+  "name": "Budget Rat Pro",
+  "short_name": "Budget Rat",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#00ff88",
+  "icons": []
+}
